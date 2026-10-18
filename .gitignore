@@ -1,0 +1,17 @@
+# Sweep output (large, regenerable) -- never commit
+data/
+
+# Python bytecode caches
+__pycache__/
+*.py[cod]
+
+# Jupyter autosave copies
+.ipynb_checkpoints/
+
+# Machine-local Claude Code settings (shared settings.json is fine to track)
+.claude/settings.local.json
+
+# Editor / OS clutter
+.vscode/
+Thumbs.db
+desktop.ini
