@@ -38,7 +38,11 @@ Commit whenever something small works (it's a save point you can return to).
   RX only: block tx(), TX atten -89.75 dB, TX LO powered down.
 - Part B: continuous logging (`--interval`), `plot_sweeps.py`
   (heatmap + max-hold/average), Jupyter notebook for analysis.
-- Also write `environment.yml` and `README.md`.
+- `README.md` written (2026-10-27): per-terminal activation steps and script usage.
+  Still to do: `environment.yml`.
+- Terminal choice: in plain PowerShell (e.g. the Claude app terminal), scripts are blocked
+  by the default execution policy. The user chose a per-window
+  `Set-ExecutionPolicy -Scope Process Bypass` over a permanent change (see README).
 
 ## Optional cleanup
 - Delete unused venv `C:\Users\bchon\venvs\pluto`.
