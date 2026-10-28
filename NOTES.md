@@ -27,7 +27,13 @@ Commit whenever something small works (it's a save point you can return to).
 
 ## Next
 - Later: private GitHub remote for backup. Before notebooks: consider `nbstripout`.
-- Part A: `pluto_sweep.py` single sweep -> Parquet in `data/`, quick plot.
+- **Part A works on hardware (2026-10-23):** full 325-3800 MHz sweep at 40 dB gain takes
+  9.1 s (232 steps, 177,920 bins, noise floor about -131 dBFS/Hz). Cellular downlink bands
+  are clearly visible. `tools/show_sweep.py` replots a saved file (`--png` writes a PNG).
+  To do: user commits `pluto_sweep.py` + `tools/show_sweep.py` (git walkthrough).
+  Investigate: regular comb of small spikes above ~2.7 GHz (spacing looks like ~15 MHz,
+  i.e. one per step?). Try gain 50 (SDR++ suggested ~50).
+- Part A spec: `pluto_sweep.py` single sweep -> Parquet in `data/`, quick plot.
   325-3800 MHz, 15 MHz steps, 20 MS/s, manual `--gain`, DC removal, Welch PSD.
   RX only: block tx(), TX atten -89.75 dB, TX LO powered down.
 - Part B: continuous logging (`--interval`), `plot_sweeps.py`
