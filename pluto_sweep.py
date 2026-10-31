@@ -130,7 +130,9 @@ def save(freq, psd, center, ts, gain):
     table = pa.table({
         "timestamp": pa.array(np.full(freq.size, ts), pa.timestamp("ms", tz="UTC")),
         "freq_hz": freq,
-        "psd_dbfs_hz": psd.astype(np.float32),
+        # from_pandas=True stores NaN (masked DC bins) as Parquet NULL, which SQL
+        # aggregates like max()/avg() skip; NaN would sort above every number.
+        "psd_dbfs_hz": pa.array(psd.astype(np.float32), from_pandas=True),
         "center_hz": center,
     })
     meta = {"gain_db": gain, "fs_hz": FS, "step_hz": STEP, "rf_bw_hz": RF_BW,
