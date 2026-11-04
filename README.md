@@ -47,6 +47,53 @@ Close SDR++ first: only one program can control the Pluto at a time.
 Add `-h` to any script for all its options. A plot window blocks the prompt until you
 close it. To keep working meanwhile, open a second terminal, or use `--png --no-show`.
 
+## JupyterLab (notebooks)
+
+JupyterLab is installed in `pluto`, so activate the env first (see above), then start it
+from the project folder:
+```powershell
+cd C:\Users\bchon\projects\sdr-sweeper
+jupyter lab
+```
+It opens in your browser. The terminal stays busy running the Jupyter server, so open a
+second terminal if you need a prompt. To stop it, use File > Shut Down in JupyterLab, or
+press Ctrl+C in the terminal.
+
+- `Shift+Enter` runs a cell. Plots appear directly below the cell.
+- A notebook's working directory is the folder it's saved in. A notebook in `scratch/`
+  reaches the sweep files at `../data/`.
+- A notebook that has connected to the Pluto keeps the connection open. Use
+  Kernel > Shut Down Kernel before using SDR++ or a terminal script with the radio.
+
+To view a sweep, run this in a cell. The last line displays the table (`df.info()` lists
+the columns and types):
+```python
+import pandas as pd
+df = pd.read_parquet("data/sweep_20261023T200153Z.parquet")
+df
+```
+
+Scratch notebooks: anything in `scratch/`, or named `scratch*.ipynb`, is ignored by git,
+so use those for trying things out. Before committing a real notebook, set up `nbstripout`
+to keep saved outputs out of git.
+
+## Spyder (MATLAB-style IDE)
+
+Spyder 6.1 is installed in Anaconda `base`, and runs your code in `pluto` through
+`spyder-kernels`. One-time setup: Tools > Preferences > Python interpreter > Selected
+interpreter > `C:\Users\bchon\anaconda3\envs\pluto\python.exe`, then open a new console
+(Consoles > New console).
+
+To browse a sweep as a table, run this and double-click `df` in the Variable Explorer:
+```python
+import pandas as pd
+df = pd.read_parquet("data/sweep_20261023T200153Z.parquet")
+```
+A console that has connected to the Pluto keeps the connection open. Restart the kernel
+before using SDR++ or a terminal script with the radio.
+
+If Spyder is ever updated, its `spyder-kernels` version in `pluto` must be updated to match.
+
 ## Data
 
 Each sweep is one Parquet file, `data/sweep_<UTC time>.parquet`, with one row per

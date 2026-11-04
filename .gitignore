@@ -8,6 +8,10 @@ __pycache__/
 # Jupyter autosave copies
 .ipynb_checkpoints/
 
+# Throwaway experiments
+scratch/
+[Ss]cratch*.ipynb
+
 # Machine-local Claude Code settings (shared settings.json is fine to track)
 .claude/settings.local.json
 

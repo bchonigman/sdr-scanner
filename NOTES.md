@@ -20,7 +20,14 @@ started on Part B yet. The next step is to choose from the options below
   (`--png --no-show` writes a PNG only).
 - **2026-10-27:** `README.md` covers the per-terminal activation commands, script usage,
   the data layout and the git routine.
-- Commits so far: initial commit, the sweep script + viewer, and the README.
+- **2026-10-31:** masked DC bins are stored as Parquet NULL instead of NaN, because NaN
+  sorts above every number in SQL `max()`. Existing files were converted.
+- **2026-11-04:** `spyder-kernels` 3.1.7 installed in `pluto` for Spyder 6.1.0 (in `base`).
+  This downgraded `ipykernel` 7.4 -> 6.31, which Spyder's kernel requires. Imports and a
+  Jupyter kernel test pass. The user still has to point Spyder at `pluto` (see README) and
+  test `import adi` from inside Spyder.
+- `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
+  `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
 ## Gotchas
 - Always run from an **activated** env. Without activation, Windows loads the system
