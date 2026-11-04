@@ -73,7 +73,26 @@ df = pd.read_parquet("data/sweep_20261023T200153Z.parquet")
 df
 ```
 
-Scratch notebooks: anything in `scratch/`, or named `scratch*.ipynb`, is ignored by git,
+### From the Start-menu Jupyter Notebook app
+
+That app runs in Anaconda `base`, and new notebooks may default to `base` too. Choose
+**Kernel > Change Kernel > Python (pluto)** to run a notebook's code in `pluto`. The
+name "Python 3 (ipykernel)" doesn't tell you which env it is, so check when in doubt:
+```python
+import sys
+print(sys.executable)   # should end in envs\pluto\python.exe
+```
+This kernel is registered in `%APPDATA%\jupyter\kernels\pluto`, with `pluto`'s folders added
+to the front of PATH so the right libiio loads (Jupyter doesn't run `conda activate`). If the
+env moves, re-register it from an activated `pluto` prompt in PowerShell:
+```powershell
+python -m ipykernel install --user --name pluto --display-name "Python (pluto)" --env PATH 'C:\Users\bchon\anaconda3\envs\pluto;C:\Users\bchon\anaconda3\envs\pluto\Library\bin;C:\Users\bchon\anaconda3\envs\pluto\Scripts;${PATH}'
+```
+To remove it: `jupyter kernelspec remove pluto`.
+
+### Scratch notebooks
+
+Anything in `scratch/`, or named `scratch*.ipynb`, is ignored by git,
 so use those for trying things out. Before committing a real notebook, set up `nbstripout`
 to keep saved outputs out of git.
 

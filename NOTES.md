@@ -26,6 +26,10 @@ started on Part B yet. The next step is to choose from the options below
   This downgraded `ipykernel` 7.4 -> 6.31, which Spyder's kernel requires. Imports and a
   Jupyter kernel test pass. The user still has to point Spyder at `pluto` (see README) and
   test `import adi` from inside Spyder.
+- **2026-11-04:** registered Jupyter kernel "Python (pluto)" in the user's kernels folder,
+  with PATH set so libiio 0.25 loads without activation. Tested from `base` Jupyter code
+  (kernel starts, `import adi` OK, env's `libiio.dll` loaded), no radio connection yet.
+  The Start-menu Jupyter server stays in `base`; `Scratch.ipynb` was running in `base`.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
