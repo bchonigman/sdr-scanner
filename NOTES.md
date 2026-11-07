@@ -1,8 +1,9 @@
 # sdr-sweeper: status notes
 
 ## Current status (2026-11-07)
-Part A (single sweep) and B1 (continuous logging) both work on hardware. Next: B2
-(`plot_sweeps.py`: waterfall plus max-hold/average spectra).
+Part A (single sweep), B1 (continuous logging) and B2 (`tools/plot_sweeps.py`) all work.
+Next options: B3 (analysis notebook, with `nbstripout` set up first), C1
+(`environment.yml`), or a longer logging run to try B2 on more data.
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -39,13 +40,22 @@ Part A (single sweep) and B1 (continuous logging) both work on hardware. Next: B
   sweep. `--interval` must be >= 1 because filenames have 1 s resolution (a 100 MHz band
   takes ~0.3 s, so sweeps could otherwise overwrite each other). `--plot` is single-sweep
   only. The first Parquet write in a process takes ~1.2 s of one-time setup.
+- **2026-11-07 (B2):** `tools/plot_sweeps.py`. A waterfall (one row per sweep, labeled
+  by UTC time) over max-hold and average spectra. DuckDB does the grouping on the Parquet
+  files. The waterfall peak-detects bins into `--bins` (1500) columns. The spectra are full
+  resolution, and the average is taken in linear power. It warns on mixed gains and
+  expands `*` patterns itself (PowerShell doesn't). Tested on the B1 sweeps; PNGs are in
+  `data/sweeps_*.png`. Observed: in the 2.4 GHz zoom, Wi-Fi shows up as boxes cut off at
+  the 15 MHz step edges, because each step is a separate ~3 ms capture taken at a
+  different moment.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
 ## Gotchas
 - Always run from an **activated** env. Without activation, Windows loads the system
   libiio 1.0 from System32 and `import adi` fails (in Claude's shell it exits silently
-  with code 127).
+  with code 127). Matplotlib's PNG saving does the same without activation. In Claude's
+  bash, put `envs/pluto`, `envs/pluto/Library/bin` and `envs/pluto/Scripts` at the front of PATH.
 - In plain PowerShell (e.g. the Claude app terminal), the default execution policy
   blocks `conda-hook.ps1`. The user chose a per-window bypass
   (`Set-ExecutionPolicy -Scope Process Bypass`) over a permanent change; see README.

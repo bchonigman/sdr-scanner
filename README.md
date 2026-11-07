@@ -45,10 +45,26 @@ Close SDR++ first: only one program can control the Pluto at a time.
 | `python pluto_sweep.py --interval 5 --count 3 --start 2400e6 --stop 2500e6` | Short logging test: 3 sweeps, 5 s apart |
 | `python tools/show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
 | `python tools/show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
+| `python tools/plot_sweeps.py --last 20` | Waterfall + max-hold/average spectra of the newest 20 sweeps |
+| `python tools/plot_sweeps.py --last 20 --start 2400e6 --stop 2500e6` | Same, zoomed to 2.4-2.5 GHz |
+| `python tools/plot_sweeps.py "data/sweep_20261107*.parquet"` | Pick sweeps by filename pattern (keep the quotes) |
 
 When logging, each finished sweep is saved right away, so Ctrl+C loses at most the
 sweep in progress. A full 325-3800 MHz sweep is about 2.2 MB, so `--interval 60` writes
 about 3 GB per day. Use a narrower `--start`/`--stop` or a longer interval for long runs.
+
+How to read `plot_sweeps.py`:
+- **Waterfall:** each pixel shows the *peak* of the frequency bins it covers. A
+  spectrum analyzer's peak detector works the same way, and it keeps narrow signals
+  visible when zoomed out. As a result, the noise floor looks a little higher here than
+  in the spectra.
+- **Max hold:** the highest value each bin reached in any sweep. This catches
+  intermittent signals.
+- **Average:** averaged in linear power, then converted to dB. Averaging the dB values
+  directly would read about 2.5 dB low on noise.
+- **Thin white lines** are the masked DC bins at each LO center (visible when zoomed in).
+- Mixing sweeps taken at different gains prints a warning, because their dBFS levels
+  don't compare.
 
 Add `-h` to any script for all its options. A plot window blocks the prompt until you
 close it. To keep working meanwhile, open a second terminal, or use `--png --no-show`.
