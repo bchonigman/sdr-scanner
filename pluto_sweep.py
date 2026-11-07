@@ -1,8 +1,10 @@
-"""Single wideband spectrum sweep with the ADALM-PLUTO -> Parquet in data/.
+"""Wideband spectrum sweeps with the ADALM-PLUTO -> one Parquet file per sweep in data/.
 
 Usage (from an activated `pluto` environment; close SDR++ first):
     python pluto_sweep.py --start 2400e6 --stop 2500e6 --plot   # quick test
     python pluto_sweep.py --gain 40 --plot                       # full 325-3800 MHz
+    python pluto_sweep.py --interval 60                          # log every 60 s until Ctrl+C
+    python pluto_sweep.py --interval 5 --count 3 --start 2400e6 --stop 2500e6  # short log test
 
 RECEIVE ONLY: TX attenuation is forced to -89.75 dB, the TX LO is powered down,
 and sdr.tx() is replaced with a function that raises.
@@ -53,9 +55,15 @@ def make_rx_only(sdr):
     tx_lo = sdr._ctrl.find_channel("altvoltage1", True)  # altvoltage1 = TX LO
     tx_lo.attrs["powerdown"].value = "1"
 
-    if sdr.tx_hardwaregain_chan0 != TX_ATTEN_MAX or tx_lo.attrs["powerdown"].value != "1":
-        sys.exit("could not put TX in a safe state; aborting")
+    check_tx_safe(sdr)
     print(f"TX safe: atten {sdr.tx_hardwaregain_chan0} dB, TX LO powered down")
+
+
+def check_tx_safe(sdr):
+    """Read back the TX state; abort if it isn't max attenuation + LO powered down."""
+    tx_lo = sdr._ctrl.find_channel("altvoltage1", True)
+    if sdr.tx_hardwaregain_chan0 != TX_ATTEN_MAX or tx_lo.attrs["powerdown"].value != "1":
+        sys.exit("TX is not in a safe state; aborting")
 
 
 def configure_rx(sdr, gain):
@@ -138,7 +146,11 @@ def save(freq, psd, center, ts, gain):
     meta = {"gain_db": gain, "fs_hz": FS, "step_hz": STEP, "rf_bw_hz": RF_BW,
             "n_samples": N_SAMPLES, "nperseg": NPERSEG, "dc_mask_hz": DC_MASK_HZ}
     table = table.replace_schema_metadata({k: str(v) for k, v in meta.items()})
-    pq.write_table(table, path)
+    # Write under a temporary name, then rename. A Ctrl+C mid-write leaves only a
+    # .tmp file, never a truncated sweep_*.parquet that a later query would choke on.
+    tmp = path.with_name(path.name + ".tmp")
+    pq.write_table(table, tmp)
+    tmp.replace(path)
     print(f"saved {freq.size:,} rows -> {path}")
     return path
 
@@ -162,21 +174,70 @@ def main():
     ap.add_argument("--start", type=float, default=325e6, help="start freq, Hz")
     ap.add_argument("--stop", type=float, default=3800e6, help="stop freq, Hz")
     ap.add_argument("--uri", help="e.g. usb: or ip:192.168.2.1 (default: try both)")
-    ap.add_argument("--plot", action="store_true", help="show the spectrum when done")
+    ap.add_argument("--plot", action="store_true",
+                    help="show the spectrum when done (single sweep only)")
+    ap.add_argument("--interval", type=float,
+                    help="repeat: seconds from one sweep's start to the next; "
+                         "runs until Ctrl+C (default: one sweep)")
+    ap.add_argument("--count", type=int,
+                    help="with --interval: stop after this many sweeps")
     args = ap.parse_args()
 
     if not 325e6 <= args.start < args.stop <= 3800e6:
         sys.exit("need 325e6 <= start < stop <= 3800e6")
+    # Filenames have 1 s resolution; sweeps starting >= 1 s apart can't collide.
+    if args.interval is not None and args.interval < 1:
+        sys.exit("--interval must be >= 1 (seconds)")
+    if args.count is not None and args.count < 1:
+        sys.exit("--count must be >= 1")
+    if args.count is not None and args.interval is None:
+        sys.exit("--count needs --interval")
+    if args.plot and args.interval is not None:
+        sys.exit("--plot only works for a single sweep (it would block the loop)")
 
     sdr = connect([args.uri] if args.uri else ["usb:", "ip:192.168.2.1"])
     make_rx_only(sdr)
     configure_rx(sdr, args.gain)
 
-    ts = datetime.now(timezone.utc)
-    freq, psd, center = sweep(sdr, args.start, args.stop)
-    save(freq, psd, center, ts, args.gain)
-    if args.plot:
-        plot(freq, psd, ts, args.gain)
+    if args.interval is None:
+        ts = datetime.now(timezone.utc)
+        freq, psd, center = sweep(sdr, args.start, args.stop)
+        save(freq, psd, center, ts, args.gain)
+        if args.plot:
+            plot(freq, psd, ts, args.gain)
+    else:
+        log_loop(sdr, args)
+
+
+def log_loop(sdr, args):
+    """Sweep every args.interval seconds (start to start) until Ctrl+C or args.count."""
+    limit = f"{args.count} sweeps" if args.count else "Ctrl+C"
+    print(f"logging every {args.interval:g} s until {limit}")
+    n_saved = 0
+    next_start = time.monotonic()    # monotonic clock: unaffected by PC clock changes
+    try:
+        while args.count is None or n_saved < args.count:
+            check_tx_safe(sdr)
+            ts = datetime.now(timezone.utc)
+            print(f"\nsweep {n_saved + 1} at {ts:%Y-%m-%d %H:%M:%S} UTC")
+            freq, psd, center = sweep(sdr, args.start, args.stop)
+            save(freq, psd, center, ts, args.gain)
+            n_saved += 1
+            if args.count is not None and n_saved >= args.count:
+                break
+
+            # Fixed-rate schedule: next start = previous start + interval.
+            next_start += args.interval
+            wait = next_start - time.monotonic()
+            if wait > 0:
+                print(f"next sweep in {wait:.1f} s (Ctrl+C to stop)")
+                time.sleep(wait)
+            else:
+                print("note: sweep took longer than --interval; starting the next now")
+                next_start = time.monotonic()   # don't try to "catch up" missed slots
+    except KeyboardInterrupt:
+        print("\nstopped by Ctrl+C (any unfinished sweep was discarded)")
+    print(f"{n_saved} sweep(s) saved to {DATA_DIR}")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,8 @@
 # sdr-sweeper: status notes
 
-## Current status (2026-10-31)
-Part A (single sweep) is done, working on hardware, and committed. Nothing has been
-started on Part B yet. The next step is to choose from the options below
-(recommended: B1 + B2).
+## Current status (2026-11-07)
+Part A (single sweep) and B1 (continuous logging) both work on hardware. Next: B2
+(`plot_sweeps.py`: waterfall plus max-hold/average spectra).
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -30,6 +29,16 @@ started on Part B yet. The next step is to choose from the options below
   with PATH set so libiio 0.25 loads without activation. Tested from `base` Jupyter code
   (kernel starts, `import adi` OK, env's `libiio.dll` loaded), no radio connection yet.
   The Start-menu Jupyter server stays in `base`; `Scratch.ipynb` was running in `base`.
+- **2026-11-07 (B1):** `pluto_sweep.py --interval N [--count M]`. Hardware-tested:
+  3 sweeps of 2.4-2.5 GHz at 5 s, and 5 full sweeps at 10 s stopped with Ctrl+C. One file
+  per sweep, no `.tmp` left over (the `.tmp` file exists only for the milliseconds of the
+  write, so Explorer never shows it).
+  Fixed-rate schedule (start to start), using a monotonic clock. A slow sweep starts the
+  next one right away, with no catch-up. TX safety is checked again before each sweep.
+  Files are written as `.tmp` and then renamed, and Ctrl+C discards only the unfinished
+  sweep. `--interval` must be >= 1 because filenames have 1 s resolution (a 100 MHz band
+  takes ~0.3 s, so sweeps could otherwise overwrite each other). `--plot` is single-sweep
+  only. The first Parquet write in a process takes ~1.2 s of one-time setup.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 

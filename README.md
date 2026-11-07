@@ -41,8 +41,14 @@ Close SDR++ first: only one program can control the Pluto at a time.
 | `python pluto_sweep.py --start 2400e6 --stop 2500e6 --plot` | Quick test sweep (2.4 GHz Wi-Fi band) |
 | `python pluto_sweep.py --plot` | Full 325-3800 MHz sweep (~10 s), saved to `data/` |
 | `python pluto_sweep.py --gain 50` | Choose the manual RX gain in dB (default 40) |
+| `python pluto_sweep.py --interval 60` | Log a sweep every 60 s (start to start) until Ctrl+C |
+| `python pluto_sweep.py --interval 5 --count 3 --start 2400e6 --stop 2500e6` | Short logging test: 3 sweeps, 5 s apart |
 | `python tools/show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
 | `python tools/show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
+
+When logging, each finished sweep is saved right away, so Ctrl+C loses at most the
+sweep in progress. A full 325-3800 MHz sweep is about 2.2 MB, so `--interval 60` writes
+about 3 GB per day. Use a narrower `--start`/`--stop` or a longer interval for long runs.
 
 Add `-h` to any script for all its options. A plot window blocks the prompt until you
 close it. To keep working meanwhile, open a second terminal, or use `--png --no-show`.
