@@ -2,7 +2,7 @@
 
 Usage:
     python tools/show_sweep.py                       # newest sweep in data/
-    python tools/show_sweep.py data/sweep_XXXX.parquet
+    python tools/show_sweep.py data/scan_XXXX.parquet
     python tools/show_sweep.py --png                 # also save a PNG next to the file
     python tools/show_sweep.py --png --no-show       # PNG only, no window
 """
@@ -23,7 +23,7 @@ args = ap.parse_args()
 if args.file:
     path = Path(args.file)
 else:
-    files = sorted(DATA_DIR.glob("sweep_*.parquet"))   # UTC names sort by time
+    files = sorted(DATA_DIR.glob("scan_*.parquet"))   # UTC names sort by time
     if not files:
         sys.exit(f"no sweeps in {DATA_DIR}")
     path = files[-1]

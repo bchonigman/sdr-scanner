@@ -1,6 +1,6 @@
 # sdr-sweeper
 
-Wideband spectrum sweep logger for the ADALM-PLUTO SDR (AD9363, 325-3800 MHz).
+Wideband spectrum scan logger for the ADALM-PLUTO SDR (AD9363, 325-3800 MHz).
 **Receive only:** the scripts never transmit.
 
 ## Every new terminal: activate the `pluto` env first
@@ -38,20 +38,23 @@ Close SDR++ first: only one program can control the Pluto at a time.
 | Command | What it does |
 |---|---|
 | `python tools/check_pluto.py` | Read-only connection check |
-| `python pluto_sweep.py --start 2400e6 --stop 2500e6 --plot` | Quick test sweep (2.4 GHz Wi-Fi band) |
-| `python pluto_sweep.py --plot` | Full 325-3800 MHz sweep (~10 s), saved to `data/` |
-| `python pluto_sweep.py --gain 50` | Choose the manual RX gain in dB (default 40) |
-| `python pluto_sweep.py --interval 60` | Log a sweep every 60 s (start to start) until Ctrl+C |
-| `python pluto_sweep.py --interval 5 --count 3 --start 2400e6 --stop 2500e6` | Short logging test: 3 sweeps, 5 s apart |
+| `python pluto_rx_freq_scan.py --start 2400e6 --stop 2500e6 --plot` | Quick test scan (2.4 GHz Wi-Fi band) |
+| `python pluto_rx_freq_scan.py --plot` | Full 325-3800 MHz scan (~10 s), saved to `data/` |
+| `python pluto_rx_freq_scan.py --gain 50` | Choose the manual RX gain in dB (default 40) |
+| `python pluto_rx_freq_scan.py --count 10` | 10 scans back to back (each starts when the last is saved) |
+| `python pluto_rx_freq_scan.py --continuous --interval 60` | A scan every 60 s (start to start) until Ctrl+C |
+| `python pluto_rx_freq_scan.py --count 3 --interval 5 --start 2400e6 --stop 2500e6` | Short logging test: 3 scans, 5 s apart |
 | `python tools/show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
 | `python tools/show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
 | `python tools/plot_sweeps.py --last 20` | Waterfall + max-hold/average spectra of the newest 20 sweeps |
 | `python tools/plot_sweeps.py --last 20 --start 2400e6 --stop 2500e6` | Same, zoomed to 2.4-2.5 GHz |
-| `python tools/plot_sweeps.py "data/sweep_20261107*.parquet"` | Pick sweeps by filename pattern (keep the quotes) |
+| `python tools/plot_sweeps.py "data/scan_20261107*.parquet"` | Pick sweeps by filename pattern (keep the quotes) |
 
-When logging, each finished sweep is saved right away, so Ctrl+C loses at most the
-sweep in progress. A full 325-3800 MHz sweep is about 2.2 MB, so `--interval 60` writes
-about 3 GB per day. Use a narrower `--start`/`--stop` or a longer interval for long runs.
+Without `--interval`, each scan starts as soon as the previous one is saved. Each
+finished scan is saved right away, so Ctrl+C loses at most the scan in progress. A full
+325-3800 MHz scan is about 2.2 MB, so `--interval 60` writes about 3 GB per day, and
+back-to-back `--continuous` about 20 GB per day (a 100 MHz band is about the same: smaller
+files, but ~0.3 s each). Use a narrower `--start`/`--stop` or an `--interval` for long runs.
 
 How to read `plot_sweeps.py`:
 - **Waterfall:** each pixel shows the *peak* of the frequency bins it covers. A
@@ -83,15 +86,15 @@ press Ctrl+C in the terminal.
 
 - `Shift+Enter` runs a cell. Plots appear directly below the cell.
 - A notebook's working directory is the folder it's saved in. A notebook in `scratch/`
-  reaches the sweep files at `../data/`.
+  reaches the scan files at `../data/`.
 - A notebook that has connected to the Pluto keeps the connection open. Use
   Kernel > Shut Down Kernel before using SDR++ or a terminal script with the radio.
 
-To view a sweep, run this in a cell. The last line displays the table (`df.info()` lists
+To view a scan, run this in a cell. The last line displays the table (`df.info()` lists
 the columns and types):
 ```python
 import pandas as pd
-df = pd.read_parquet("data/sweep_20261023T200153Z.parquet")
+df = pd.read_parquet("data/scan_20261023T200153.636Z_325to3800MHz.parquet")
 df
 ```
 
@@ -125,10 +128,10 @@ Spyder 6.1 is installed in Anaconda `base`, and runs your code in `pluto` throug
 interpreter > `C:\Users\bchon\anaconda3\envs\pluto\python.exe`, then open a new console
 (Consoles > New console).
 
-To browse a sweep as a table, run this and double-click `df` in the Variable Explorer:
+To browse a scan as a table, run this and double-click `df` in the Variable Explorer:
 ```python
 import pandas as pd
-df = pd.read_parquet("data/sweep_20261023T200153Z.parquet")
+df = pd.read_parquet("data/scan_20261023T200153.636Z_325to3800MHz.parquet")
 ```
 A console that has connected to the Pluto keeps the connection open. Restart the kernel
 before using SDR++ or a terminal script with the radio.
@@ -137,14 +140,16 @@ If Spyder is ever updated, its `spyder-kernels` version in `pluto` must be updat
 
 ## Data
 
-Each sweep is one Parquet file, `data/sweep_<UTC time>.parquet`, with one row per
-frequency bin: `timestamp, freq_hz, psd_dbfs_hz, center_hz`. Settings (gain, sample rate,
-etc.) are stored as file metadata. `data/` is kept out of git.
+Each scan is one Parquet file, `data/scan_<UTC start, ms>_<start>to<stop>MHz.parquet`
+(e.g. `scan_20261031T200843.227Z_325to3800MHz.parquet`; time first, so names sort by
+time), with one row per frequency bin: `timestamp, freq_hz, psd_dbfs_hz, center_hz`.
+Settings (gain, sample rate, etc.) are stored as file metadata; files from 2026-11-11 on
+also store the requested band as `start_hz`/`stop_hz`. `data/` is kept out of git.
 
-Query all sweeps at once with DuckDB:
+Query all scans at once with DuckDB:
 ```python
 import duckdb
-duckdb.sql("SELECT timestamp, max(psd_dbfs_hz) FROM 'data/sweep_*.parquet' "
+duckdb.sql("SELECT timestamp, max(psd_dbfs_hz) FROM 'data/scan_*.parquet' "
            "WHERE freq_hz BETWEEN 2.4e9 AND 2.5e9 GROUP BY timestamp").df()
 ```
 

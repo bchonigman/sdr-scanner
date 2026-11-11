@@ -1,9 +1,11 @@
 # sdr-sweeper: status notes
 
-## Current status (2026-11-07)
+## Current status (2026-11-11)
 Part A (single sweep), B1 (continuous logging) and B2 (`tools/plot_sweeps.py`) all work.
-Next options: B3 (analysis notebook, with `nbstripout` set up first), C1
-(`environment.yml`), or a longer logging run to try B2 on more data.
+In progress: renaming pass, one script at a time, names chosen by the user. Batch 1
+(`pluto_sweep.py` -> `pluto_rx_freq_scan.py`) is done and checked offline only; it still
+needs a hardware run. Batches 2-4 (`plot_sweeps.py`, `show_sweep.py`, `check_pluto.py`) are next.
+Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -48,6 +50,22 @@ Next options: B3 (analysis notebook, with `nbstripout` set up first), C1
   `data/sweeps_*.png`. Observed: in the 2.4 GHz zoom, Wi-Fi shows up as boxes cut off at
   the 15 MHz step edges, because each step is a separate ~3 ms capture taken at a
   different moment.
+- **2026-11-11 (rename batch 1):** `pluto_sweep.py` -> `pluto_rx_freq_scan.py` (`git mv`).
+  "Sweep" -> "scan" throughout (`sweep()` -> `scan()`, `log_loop()` -> `scan_loop()`).
+  Behavior changed: it always runs `scan_loop`; `--count` (default 1) sets how many scans,
+  `--continuous` (new, excludes `--count`) runs until Ctrl+C. Without `--interval` scans
+  run back to back; `--interval` (now >= 0) keeps the fixed start-to-start schedule. `--plot`
+  works with any count and shows only the last scan saved (also after Ctrl+C with
+  `--continuous`). New filename: `scan_<UTC, ms>_<start>to<stop>MHz.parquet` (time
+  first so names sort by time; ms instead of seconds so back-to-back narrow-band scans
+  can't collide; this replaces the old `--interval >= 1` rule). New metadata keys
+  `start_hz`/`stop_hz` (new files only). Columns and older metadata keys unchanged.
+  The 36 old `data/sweep_*.parquet` files were renamed to the new scheme (time from the
+  `timestamp` column, band from `freq_hz`; contents unchanged). Old PNGs kept their names.
+  `plot_sweeps.py`/`show_sweep.py` got only the glob and filename-time parsing changes
+  they need. Found: `gain_db` is stored as `'40'` (default) or `'40.0'` (`--gain 40`), so
+  plot_sweeps' text comparison of gains can warn falsely. This was already in the code;
+  it's for the plot_sweeps batch.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
@@ -108,10 +126,17 @@ The user wants to be walked through git steps (learning goal).
   generator.
 - **E2. Calibration** from dBFS to dBm using a known input power.
 
+### F. Transmit (later, only when the user says so)
+Receive-only is for the learning phase, so nothing interferes with others' Wi-Fi or
+cellular service. The user plans to try TX once the tools and RX side feel solid. A safe
+first step would be a cabled loopback: TX -> SMA attenuators -> RX, at the lowest output,
+with no antenna, so nothing radiates. E2 could use the result as a rough known source.
+Transmitting over the air needs care with frequency, power and licensing rules.
+
 ## Part A spec (reference)
-`pluto_sweep.py`: 325-3800 MHz, 15 MHz steps (center +/- 7.5 MHz kept), 20 MS/s,
+`pluto_sweep.py` (now `pluto_rx_freq_scan.py`): 325-3800 MHz, 15 MHz steps (center +/- 7.5 MHz kept), 20 MS/s,
 18 MHz RF BW, 65,536 samples per step, Welch PSD (Hann, 1024 points, 50% overlap),
 mean removal + NaN mask within +/-40 kHz of each LO, clipping warning at 95% of full
-scale, manual `--gain` (default 40). Output: `data/sweep_<UTC>.parquet` with columns
+scale, manual `--gain` (default 40). Output: `data/sweep_<UTC>.parquet` (now `scan_<UTC ms>_<band>MHz.parquet`) with columns
 `timestamp, freq_hz, psd_dbfs_hz, center_hz` plus settings as metadata.
 RX only: `tx()` blocked, TX atten -89.75 dB, TX LO powered down, verified at startup.

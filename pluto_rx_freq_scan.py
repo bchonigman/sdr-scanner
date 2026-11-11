@@ -1,13 +1,17 @@
-"""Wideband spectrum sweeps with the ADALM-PLUTO -> one Parquet file per sweep in data/.
+"""Wideband spectrum scans with the ADALM-PLUTO -> one Parquet file per scan in data/.
 
 Usage (from an activated `pluto` environment; close SDR++ first):
-    python pluto_sweep.py --start 2400e6 --stop 2500e6 --plot   # quick test
-    python pluto_sweep.py --gain 40 --plot                       # full 325-3800 MHz
-    python pluto_sweep.py --interval 60                          # log every 60 s until Ctrl+C
-    python pluto_sweep.py --interval 5 --count 3 --start 2400e6 --stop 2500e6  # short log test
+    python pluto_rx_freq_scan.py --start 2400e6 --stop 2500e6 --plot   # quick test
+    python pluto_rx_freq_scan.py --gain 40 --plot                       # full 325-3800 MHz
+    python pluto_rx_freq_scan.py --count 10                             # 10 scans back to back
+    python pluto_rx_freq_scan.py --continuous --interval 60             # every 60 s until Ctrl+C
+    python pluto_rx_freq_scan.py --count 3 --interval 5 --start 2400e6 --stop 2500e6
+
+Files are named data/scan_<UTC start, ms>_<start>to<stop>MHz.parquet,
+e.g. scan_20261031T200843.512Z_325to3800MHz.parquet (sorts by time).
 
 RECEIVE ONLY: TX attenuation is forced to -89.75 dB, the TX LO is powered down,
-and sdr.tx() is replaced with a function that raises.
+and sdr.tx() is replaced with a function that raises an error.
 """
 import argparse
 import math
@@ -49,7 +53,9 @@ def make_rx_only(sdr):
     """Force TX off, block tx(), and verify. Abort if anything didn't stick."""
     def _blocked(*args, **kwargs):
         raise RuntimeError("TX is disabled: this project is receive-only")
-    sdr.tx = _blocked
+    sdr.tx = _blocked   # this defines the sdr object's own local tx function that
+                        # hides the pyadi-iio library's version.
+                        # any accidental call to sdr.tx(...) raises an error
 
     sdr.tx_hardwaregain_chan0 = TX_ATTEN_MAX
     tx_lo = sdr._ctrl.find_channel("altvoltage1", True)  # altvoltage1 = TX LO
@@ -70,7 +76,7 @@ def configure_rx(sdr, gain):
     sdr.sample_rate = int(FS)
     sdr.rx_rf_bandwidth = int(RF_BW)
     sdr.rx_buffer_size = N_SAMPLES
-    sdr.gain_control_mode_chan0 = "manual"   # no AGC: gain must not change mid-sweep
+    sdr.gain_control_mode_chan0 = "manual"   # no AGC: gain must not change mid-scan
     sdr.rx_hardwaregain_chan0 = gain
     # Fewer queued kernel buffers = less stale data after a retune.
     # Must happen before the first rx() call creates the buffer.
@@ -109,9 +115,10 @@ def capture_psd(sdr, center):
     return center + f, psd_db, peak
 
 
-def sweep(sdr, start, stop):
+def scan(sdr, start, stop):
+    """One pass over [start, stop): capture every LO step and join the pieces."""
     centers = step_centers(start, stop)
-    print(f"sweeping {start/1e6:.1f}-{stop/1e6:.1f} MHz in {len(centers)} steps")
+    print(f"scanning {start/1e6:.1f}-{stop/1e6:.1f} MHz in {len(centers)} steps")
     freqs, psds, ctrs, clipped = [], [], [], []
     t0 = time.time()
     for i, c in enumerate(centers):
@@ -132,9 +139,16 @@ def sweep(sdr, start, stop):
     return f[inside], p[inside], c[inside]
 
 
-def save(freq, psd, center, ts, gain):
+def scan_filename(ts, start, stop):
+    """scan_<UTC, ms>_<start>to<stop>MHz.parquet. Time first, so names sort by time;
+    milliseconds keep back-to-back scans of a narrow band (~0.3 s each) unique."""
+    return (f"scan_{ts:%Y%m%dT%H%M%S}.{ts.microsecond // 1000:03d}Z_"
+            f"{start/1e6:g}to{stop/1e6:g}MHz.parquet")
+
+
+def save(freq, psd, center, ts, gain, start, stop):
     DATA_DIR.mkdir(exist_ok=True)
-    path = DATA_DIR / f"sweep_{ts:%Y%m%dT%H%M%SZ}.parquet"
+    path = DATA_DIR / scan_filename(ts, start, stop)
     table = pa.table({
         "timestamp": pa.array(np.full(freq.size, ts), pa.timestamp("ms", tz="UTC")),
         "freq_hz": freq,
@@ -144,10 +158,11 @@ def save(freq, psd, center, ts, gain):
         "center_hz": center,
     })
     meta = {"gain_db": gain, "fs_hz": FS, "step_hz": STEP, "rf_bw_hz": RF_BW,
-            "n_samples": N_SAMPLES, "nperseg": NPERSEG, "dc_mask_hz": DC_MASK_HZ}
+            "n_samples": N_SAMPLES, "nperseg": NPERSEG, "dc_mask_hz": DC_MASK_HZ,
+            "start_hz": start, "stop_hz": stop}
     table = table.replace_schema_metadata({k: str(v) for k, v in meta.items()})
     # Write under a temporary name, then rename. A Ctrl+C mid-write leaves only a
-    # .tmp file, never a truncated sweep_*.parquet that a later query would choke on.
+    # .tmp file, never a truncated scan_*.parquet that a later query would choke on.
     tmp = path.with_name(path.name + ".tmp")
     pq.write_table(table, tmp)
     tmp.replace(path)
@@ -161,7 +176,7 @@ def plot(freq, psd, ts, gain):
     ax.plot(freq / 1e6, psd, lw=0.5)
     ax.set_xlabel("Frequency (MHz)")
     ax.set_ylabel("PSD (dBFS/Hz)")
-    ax.set_title(f"Pluto sweep {ts:%Y-%m-%d %H:%M:%S} UTC, gain {gain} dB")
+    ax.set_title(f"Pluto scan {ts:%Y-%m-%d %H:%M:%S} UTC, gain {gain} dB")
     ax.grid(alpha=0.3)
     fig.tight_layout()
     plt.show()
@@ -175,69 +190,75 @@ def main():
     ap.add_argument("--stop", type=float, default=3800e6, help="stop freq, Hz")
     ap.add_argument("--uri", help="e.g. usb: or ip:192.168.2.1 (default: try both)")
     ap.add_argument("--plot", action="store_true",
-                    help="show the spectrum when done (single sweep only)")
+                    help="when done, show the spectrum of the last scan saved "
+                         "(with --count N or --continuous: only the last one; "
+                         "use tools/plot_sweeps.py to compare scans)")
+    repeat = ap.add_mutually_exclusive_group()
+    repeat.add_argument("--count", type=int, default=1,
+                        help="number of scans (default 1)")
+    repeat.add_argument("--continuous", action="store_true",
+                        help="scan until Ctrl+C (instead of --count)")
     ap.add_argument("--interval", type=float,
-                    help="repeat: seconds from one sweep's start to the next; "
-                         "runs until Ctrl+C (default: one sweep)")
-    ap.add_argument("--count", type=int,
-                    help="with --interval: stop after this many sweeps")
+                    help="seconds from one scan's start to the next "
+                         "(default: start the next scan as soon as one finishes)")
     args = ap.parse_args()
 
     if not 325e6 <= args.start < args.stop <= 3800e6:
         sys.exit("need 325e6 <= start < stop <= 3800e6")
-    # Filenames have 1 s resolution; sweeps starting >= 1 s apart can't collide.
-    if args.interval is not None and args.interval < 1:
-        sys.exit("--interval must be >= 1 (seconds)")
-    if args.count is not None and args.count < 1:
+    if args.interval is not None and args.interval < 0:
+        sys.exit("--interval must be >= 0 (seconds)")
+    if args.count < 1:
         sys.exit("--count must be >= 1")
-    if args.count is not None and args.interval is None:
-        sys.exit("--count needs --interval")
-    if args.plot and args.interval is not None:
-        sys.exit("--plot only works for a single sweep (it would block the loop)")
 
     sdr = connect([args.uri] if args.uri else ["usb:", "ip:192.168.2.1"])
     make_rx_only(sdr)
     configure_rx(sdr, args.gain)
 
-    if args.interval is None:
-        ts = datetime.now(timezone.utc)
-        freq, psd, center = sweep(sdr, args.start, args.stop)
-        save(freq, psd, center, ts, args.gain)
-        if args.plot:
-            plot(freq, psd, ts, args.gain)
-    else:
-        log_loop(sdr, args)
+    last_scan = scan_loop(sdr, args)
+    if args.plot and last_scan is not None:
+        plot(*last_scan, args.gain)
 
 
-def log_loop(sdr, args):
-    """Sweep every args.interval seconds (start to start) until Ctrl+C or args.count."""
-    limit = f"{args.count} sweeps" if args.count else "Ctrl+C"
-    print(f"logging every {args.interval:g} s until {limit}")
+def scan_loop(sdr, args):
+    """Scan args.count times, or until Ctrl+C with --continuous.
+
+    Without --interval, each scan starts as soon as the previous one is saved.
+    With --interval, scans start on a fixed schedule (start to start).
+    Returns (freq, psd, ts) of the last saved scan, or None.
+    """
+    limit = "Ctrl+C" if args.continuous else f"{args.count} scan(s)"
+    pace = f"every {args.interval:g} s" if args.interval else "back to back"
+    print(f"scanning {pace} until {limit}")
     n_saved = 0
+    last_scan = None
     next_start = time.monotonic()    # monotonic clock: unaffected by PC clock changes
     try:
-        while args.count is None or n_saved < args.count:
+        while args.continuous or n_saved < args.count:
             check_tx_safe(sdr)
             ts = datetime.now(timezone.utc)
-            print(f"\nsweep {n_saved + 1} at {ts:%Y-%m-%d %H:%M:%S} UTC")
-            freq, psd, center = sweep(sdr, args.start, args.stop)
-            save(freq, psd, center, ts, args.gain)
+            print(f"\nscan {n_saved + 1} at {ts:%Y-%m-%d %H:%M:%S} UTC")
+            freq, psd, center = scan(sdr, args.start, args.stop)
+            save(freq, psd, center, ts, args.gain, args.start, args.stop)
             n_saved += 1
-            if args.count is not None and n_saved >= args.count:
+            last_scan = (freq, psd, ts)
+            if not args.continuous and n_saved >= args.count:
                 break
+            if not args.interval:
+                continue                 # back to back: start the next scan now
 
             # Fixed-rate schedule: next start = previous start + interval.
             next_start += args.interval
             wait = next_start - time.monotonic()
             if wait > 0:
-                print(f"next sweep in {wait:.1f} s (Ctrl+C to stop)")
+                print(f"next scan in {wait:.1f} s (Ctrl+C to stop)")
                 time.sleep(wait)
             else:
-                print("note: sweep took longer than --interval; starting the next now")
+                print("note: scan took longer than --interval; starting the next now")
                 next_start = time.monotonic()   # don't try to "catch up" missed slots
     except KeyboardInterrupt:
-        print("\nstopped by Ctrl+C (any unfinished sweep was discarded)")
-    print(f"{n_saved} sweep(s) saved to {DATA_DIR}")
+        print("\nstopped by Ctrl+C (any unfinished scan was discarded)")
+    print(f"{n_saved} scan(s) saved to {DATA_DIR}")
+    return last_scan
 
 
 if __name__ == "__main__":

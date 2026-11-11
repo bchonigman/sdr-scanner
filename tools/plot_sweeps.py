@@ -1,12 +1,12 @@
 """Waterfall (frequency vs time) plus max-hold and average spectra over many sweeps.
 
-No Pluto needed: reads the Parquet files that pluto_sweep.py saved in data/.
+No Pluto needed: reads the Parquet files that pluto_rx_freq_scan.py saved in data/.
 
 Usage:
     python tools/plot_sweeps.py                                  # all sweeps in data/
     python tools/plot_sweeps.py --last 5                         # newest 5 sweeps
     python tools/plot_sweeps.py --last 5 --start 2400e6 --stop 2500e6   # zoom in
-    python tools/plot_sweeps.py "data/sweep_20261107*.parquet"   # pick files by pattern
+    python tools/plot_sweeps.py "data/scan_20261107*.parquet"    # pick files by pattern
     python tools/plot_sweeps.py --last 5 --png --no-show         # save as PNG, dont display window
 
 Waterfall pixels show the PEAK of the bins they cover (like a spectrum analyzer's
@@ -36,7 +36,7 @@ def pick_files(args):
                 sys.exit(f"no files match {pattern}")
             files += [Path(m) for m in matches]
     else:
-        files = list(DATA_DIR.glob("sweep_*.parquet"))
+        files = list(DATA_DIR.glob("scan_*.parquet"))
     files = sorted(set(files), key=lambda p: p.name)   # UTC names sort by time
     if args.last:
         files = files[-args.last:]
@@ -46,7 +46,9 @@ def pick_files(args):
 
 
 def sweep_time(path):
-    return datetime.strptime(path.stem, "sweep_%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    # scan_20261031T200843.512Z_325to3800MHz.parquet -> the time part after "scan_"
+    stamp = path.stem.split("_")[1]
+    return datetime.strptime(stamp, "%Y%m%dT%H%M%S.%fZ").replace(tzinfo=timezone.utc)
 
 
 def read_settings(files):
