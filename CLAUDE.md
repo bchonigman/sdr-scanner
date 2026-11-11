@@ -49,6 +49,9 @@ firmware v0.38) on Windows 11. Stock range is 325 MHz to 3.8 GHz. Use pyadi-iio
 
 - **Receive only.** Never call `tx()` or enable/transmit on TX. Keep TX attenuation
   at maximum (-89.75 dB) and the TX LO powered down.
+  Why: so nothing accidentally transmits and interferes with others' Wi-Fi or cellular
+  service while I'm still learning the tools and the RX side. TX experiments come later,
+  but only when I explicitly say so. Until then, this rule holds.
 - **Always use the activated `pluto` conda env** (Anaconda Prompt ->
   `conda activate pluto`). Without activation, Windows loads the system libiio 1.0
   from System32 and `import adi` fails. Avoid `conda run` for Pluto scripts (it hung).
