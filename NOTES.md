@@ -2,10 +2,10 @@
 
 ## Current status (2026-11-15)
 Part A (single scan), B1 (continuous logging) and B2 (`waterfall_plot_scans.py`) all work.
-In progress: renaming pass, one script at a time, names chosen by the user. Batches 1-2
-(`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`) are done and checked offline only;
-the scan script still needs a hardware run. Batches 3-4 (`show_sweep.py`, `check_pluto.py`)
-are next. All scripts are now at the top level (no more `tools/`).
+In progress: renaming pass, one script at a time, names chosen by the user. Batches 1-3
+(`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py`) are done and checked
+offline only; the scan script still needs a hardware run. Batch 4 (`check_pluto.py`) is
+next. All scripts are now at the top level (no more `tools/`).
 Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
 
 ## Done
@@ -76,6 +76,13 @@ Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.
   warn. Corrected the "averaging dB reads ~2.5 dB low" claim: that holds for raw FFT bins,
   but our bins are Welch averages of ~127 segments, so for steady noise it's ~0.02 dB. The
   linear average matters for bursty signals (1-in-10 burst: -100 linear vs -126 in dB).
+- **2026-11-15 (rename batch 3):** `show_sweep.py` -> `plot_scan.py` ("sweep" -> "scan" in
+  its wording). Restructured into functions + `main()`, so importing it runs nothing:
+  `newest_scan()`, `load_scan(path)` -> `(df, meta)`, `gain_label(meta)`,
+  `print_summary(...)`, `plot_spectrum(df, title)` -> figure (for B3 notebooks).
+  `-h` now shows the usage examples. The title shows gain as a number (`40`, not
+  `'40'`/`'40.0'`). Idea for later: "strongest bins" lists neighbors of the same signal;
+  `scipy.signal.find_peaks` with a minimum spacing would list distinct signals.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
@@ -92,7 +99,7 @@ Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.
   would sync to other PCs.
 - Avoid `conda run` for Pluto scripts; it hung during testing.
 - PowerShell has no `cmd &` for background jobs. Use a second terminal,
-  `Start-Process`, or `show_sweep.py --png --no-show`.
+  `Start-Process`, or `plot_scan.py --png --no-show`.
 - A plot window blocks the prompt until it's closed.
 
 ## Commit routine

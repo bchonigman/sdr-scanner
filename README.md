@@ -44,8 +44,8 @@ Close SDR++ first: only one program can control the Pluto at a time.
 | `python pluto_rx_freq_scan.py --count 10` | 10 scans back to back (each starts when the last is saved) |
 | `python pluto_rx_freq_scan.py --continuous --interval 60` | A scan every 60 s (start to start) until Ctrl+C |
 | `python pluto_rx_freq_scan.py --count 3 --interval 5 --start 2400e6 --stop 2500e6` | Short logging test: 3 scans, 5 s apart |
-| `python show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
-| `python show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
+| `python plot_scan.py` | Plot the newest saved scan (no Pluto needed) |
+| `python plot_scan.py --png --no-show` | Save a PNG next to the scan without opening a window |
 | `python waterfall_plot_scans.py --last 20` | Waterfall + max-hold/average spectra of the newest 20 scans |
 | `python waterfall_plot_scans.py --last 20 --start 2400e6 --stop 2500e6` | Same, zoomed to 2.4-2.5 GHz |
 | `python waterfall_plot_scans.py "data/scan_20261107*.parquet"` | Pick scans by filename pattern (keep the quotes) |
