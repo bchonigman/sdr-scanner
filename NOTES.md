@@ -1,12 +1,14 @@
 # sdr-sweeper: status notes
 
-## Current status (2026-11-15)
+## Current status (2026-11-16)
 Part A (single scan), B1 (continuous logging) and B2 (`waterfall_plot_scans.py`) all work.
-In progress: renaming pass, one script at a time, names chosen by the user. Batches 1-3
-(`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py`) are done and checked
-offline only; the scan script still needs a hardware run. Batch 4 (`check_pluto.py`) is
-next. All scripts are now at the top level (no more `tools/`).
-Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
+The renaming pass is finished (batches 1-4, names chosen by the user). The scripts are
+`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`, all
+at the top level. Everything was checked offline only. Next: a short hardware run of the
+new scan loop (e.g. `--count 3 --start 2400e6 --stop 2500e6`), then `python check_pluto.py`
+to see whether the TX-safe settings (-89.75 dB, TX LO powerdown 1) persist after the
+script exits. Then B3 (analysis notebook, with `nbstripout` set up first) or C1
+(`environment.yml`).
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -83,6 +85,11 @@ Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.
   `-h` now shows the usage examples. The title shows gain as a number (`40`, not
   `'40'`/`'40.0'`). Idea for later: "strongest bins" lists neighbors of the same signal;
   `scipy.signal.find_peaks` with a minimum spacing would list distinct signals.
+- **2026-11-16 (rename batch 4):** `check_pluto.py` kept its name and stays a flat script
+  (the user's choice: it's a command-line check, not a library). It now uses argparse, so
+  `-h` prints the usage examples instead of being tried as a URI. Parsing happens before
+  `import adi`, so `-h` works even without the env activated. The user added comments
+  explaining the late imports and the libiio DLL path line.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 

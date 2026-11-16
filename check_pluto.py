@@ -1,22 +1,42 @@
 """Read-only connectivity check for the ADALM-PLUTO.
 
 Usage (from an activated `pluto` environment):
-    python check_pluto.py                    # try usb:, fall back to ip:192.168.2.1
+    python check_pluto.py                     # try usb:, fall back to ip:192.168.2.1
     python check_pluto.py ip:192.168.2.1
+    python check_pluto.py ip:192.168.2.1 usb: # try several, in this order
 
 Only reads settings. Never writes to the radio and never touches TX.
 """
+import argparse
 import sys
 import time
 
-uris = sys.argv[1:] or ["usb:", "ip:192.168.2.1"]
+# Parse arguments before importing adi, so -h works even if libiio would fail to load.
+ap = argparse.ArgumentParser(description=__doc__,
+                             formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("uris", nargs="*", metavar="URI",
+                help="URI(s) to try in order (default: usb:, then ip:192.168.2.1)")
+args = ap.parse_args()
+uris = args.uris or ["usb:", "ip:192.168.2.1"]
+
+print("Initiating basic read-only connectivity check for the ADALM-PLUTO.", flush=True)
+
+
+# Check if libraries and DLLs are loading correctly
 
 print("importing adi...", flush=True)
+# the following imports are deliberately not at the top of the file. 
+# importing adi loads the libiio DLL, which fails or exits silently 
+# when the correct env isn’t activated
 import adi  # noqa: E402
 import iio  # noqa: E402
 
-print("libiio dll:", iio._lib._name, flush=True)
 
+print("libiio dll:", iio._lib._name, flush=True)  # Print path of the libiio DLL that loaded.
+                                                  # Should be inside envs\pluto, not System32.
+
+
+# Check if we can connect to the Pluto SDR and print basic info about the Pluto to terminal
 sdr = None
 for uri in uris:
     t0 = time.time()
@@ -29,7 +49,7 @@ for uri in uris:
         print(f"  failed: {e}", flush=True)
 
 if sdr is None:
-    sys.exit("could not connect on any URI")
+    sys.exit("could not connect to the Pluto SDR on any URI")
 
 print("model     :", sdr.ctx.attrs["ad9361-phy,model"], "| fw", sdr.ctx.attrs["fw_version"])
 print("rx_lo     :", sdr.rx_lo / 1e6, "MHz")
