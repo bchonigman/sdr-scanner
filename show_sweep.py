@@ -1,10 +1,10 @@
 """Plot a saved sweep from data/ (no Pluto needed).
 
 Usage:
-    python tools/show_sweep.py                       # newest sweep in data/
-    python tools/show_sweep.py data/scan_XXXX.parquet
-    python tools/show_sweep.py --png                 # also save a PNG next to the file
-    python tools/show_sweep.py --png --no-show       # PNG only, no window
+    python show_sweep.py                       # newest sweep in data/
+    python show_sweep.py data/scan_XXXX.parquet
+    python show_sweep.py --png                 # also save a PNG next to the file
+    python show_sweep.py --png --no-show       # PNG only, no window
 """
 import argparse
 import sys
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("file", nargs="?", help="Parquet file (default: newest in data/)")

@@ -1,8 +1,8 @@
 """Read-only connectivity check for the ADALM-PLUTO.
 
 Usage (from an activated `pluto` environment):
-    python tools/check_pluto.py              # try usb:, fall back to ip:192.168.2.1
-    python tools/check_pluto.py ip:192.168.2.1
+    python check_pluto.py                    # try usb:, fall back to ip:192.168.2.1
+    python check_pluto.py ip:192.168.2.1
 
 Only reads settings. Never writes to the radio and never touches TX.
 """

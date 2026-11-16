@@ -53,7 +53,7 @@ def make_rx_only(sdr):
     """Force TX off, block tx(), and verify. Abort if anything didn't stick."""
     def _blocked(*args, **kwargs):
         raise RuntimeError("TX is disabled: this project is receive-only")
-    sdr.tx = _blocked   # this defines the sdr object's own local tx function that
+    sdr.tx = _blocked   # defines this sdr object's own tx function that
                         # hides the pyadi-iio library's version.
                         # any accidental call to sdr.tx(...) raises an error
 
@@ -192,7 +192,7 @@ def main():
     ap.add_argument("--plot", action="store_true",
                     help="when done, show the spectrum of the last scan saved "
                          "(with --count N or --continuous: only the last one; "
-                         "use tools/plot_sweeps.py to compare scans)")
+                         "use waterfall_plot_scans.py to compare scans)")
     repeat = ap.add_mutually_exclusive_group()
     repeat.add_argument("--count", type=int, default=1,
                         help="number of scans (default 1)")

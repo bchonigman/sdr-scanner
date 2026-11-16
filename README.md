@@ -37,18 +37,18 @@ Close SDR++ first: only one program can control the Pluto at a time.
 
 | Command | What it does |
 |---|---|
-| `python tools/check_pluto.py` | Read-only connection check |
+| `python check_pluto.py` | Read-only connection check |
 | `python pluto_rx_freq_scan.py --start 2400e6 --stop 2500e6 --plot` | Quick test scan (2.4 GHz Wi-Fi band) |
 | `python pluto_rx_freq_scan.py --plot` | Full 325-3800 MHz scan (~10 s), saved to `data/` |
 | `python pluto_rx_freq_scan.py --gain 50` | Choose the manual RX gain in dB (default 40) |
 | `python pluto_rx_freq_scan.py --count 10` | 10 scans back to back (each starts when the last is saved) |
 | `python pluto_rx_freq_scan.py --continuous --interval 60` | A scan every 60 s (start to start) until Ctrl+C |
 | `python pluto_rx_freq_scan.py --count 3 --interval 5 --start 2400e6 --stop 2500e6` | Short logging test: 3 scans, 5 s apart |
-| `python tools/show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
-| `python tools/show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
-| `python tools/plot_sweeps.py --last 20` | Waterfall + max-hold/average spectra of the newest 20 sweeps |
-| `python tools/plot_sweeps.py --last 20 --start 2400e6 --stop 2500e6` | Same, zoomed to 2.4-2.5 GHz |
-| `python tools/plot_sweeps.py "data/scan_20261107*.parquet"` | Pick sweeps by filename pattern (keep the quotes) |
+| `python show_sweep.py` | Plot the newest saved sweep (no Pluto needed) |
+| `python show_sweep.py --png --no-show` | Save a PNG next to the sweep without opening a window |
+| `python waterfall_plot_scans.py --last 20` | Waterfall + max-hold/average spectra of the newest 20 scans |
+| `python waterfall_plot_scans.py --last 20 --start 2400e6 --stop 2500e6` | Same, zoomed to 2.4-2.5 GHz |
+| `python waterfall_plot_scans.py "data/scan_20261107*.parquet"` | Pick scans by filename pattern (keep the quotes) |
 
 Without `--interval`, each scan starts as soon as the previous one is saved. Each
 finished scan is saved right away, so Ctrl+C loses at most the scan in progress. A full
@@ -56,18 +56,21 @@ finished scan is saved right away, so Ctrl+C loses at most the scan in progress.
 back-to-back `--continuous` about 20 GB per day (a 100 MHz band is about the same: smaller
 files, but ~0.3 s each). Use a narrower `--start`/`--stop` or an `--interval` for long runs.
 
-How to read `plot_sweeps.py`:
+How to read `waterfall_plot_scans.py` (`--png` saves `data/scans_<first>_<last>.png`):
 - **Waterfall:** each pixel shows the *peak* of the frequency bins it covers. A
   spectrum analyzer's peak detector works the same way, and it keeps narrow signals
   visible when zoomed out. As a result, the noise floor looks a little higher here than
   in the spectra.
-- **Max hold:** the highest value each bin reached in any sweep. This catches
+- **Max hold:** the highest value each bin reached in any scan. This catches
   intermittent signals.
-- **Average:** averaged in linear power, then converted to dB. Averaging the dB values
-  directly would read about 2.5 dB low on noise.
+- **Average:** averaged in linear power, then converted to dB. For steady noise this
+  barely differs from averaging the dB values (~0.02 dB), because each bin is already a
+  Welch average of ~127 segments. It matters for signals that come and go: a burst at
+  -90 dBFS/Hz in 1 of 10 scans over a -130 floor averages to about -100 in linear power,
+  but to -126 in dB, which hides it near the noise floor.
 - **Thin white lines** are the masked DC bins at each LO center (visible when zoomed in).
-- Mixing sweeps taken at different gains prints a warning, because their dBFS levels
-  don't compare.
+- Mixing scans taken at different gains prints a warning, because their dBFS levels
+  don't compare. Gains are compared as numbers, so 40 and 40.0 count as the same.
 
 Add `-h` to any script for all its options. A plot window blocks the prompt until you
 close it. To keep working meanwhile, open a second terminal, or use `--png --no-show`.

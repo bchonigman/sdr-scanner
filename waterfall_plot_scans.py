@@ -1,13 +1,13 @@
-"""Waterfall (frequency vs time) plus max-hold and average spectra over many sweeps.
+"""Waterfall (frequency vs time) plus max-hold and average spectra over many scans.
 
 No Pluto needed: reads the Parquet files that pluto_rx_freq_scan.py saved in data/.
 
 Usage:
-    python tools/plot_sweeps.py                                  # all sweeps in data/
-    python tools/plot_sweeps.py --last 5                         # newest 5 sweeps
-    python tools/plot_sweeps.py --last 5 --start 2400e6 --stop 2500e6   # zoom in
-    python tools/plot_sweeps.py "data/scan_20261107*.parquet"    # pick files by pattern
-    python tools/plot_sweeps.py --last 5 --png --no-show         # save as PNG, dont display window
+    python waterfall_plot_scans.py                                  # all scans in data/
+    python waterfall_plot_scans.py --last 5                         # newest 5 scans
+    python waterfall_plot_scans.py --last 5 --start 2400e6 --stop 2500e6   # zoom in
+    python waterfall_plot_scans.py "data/scan_20261107*.parquet"    # pick files by pattern
+    python waterfall_plot_scans.py --last 5 --png --no-show         # save as PNG, dont display window
 
 Waterfall pixels show the PEAK of the bins they cover (like a spectrum analyzer's
 peak detector), so narrow signals stay visible when zoomed out. The noise floor looks
@@ -24,7 +24,7 @@ import duckdb
 import numpy as np
 import pyarrow.parquet as pq
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def pick_files(args):
@@ -41,11 +41,11 @@ def pick_files(args):
     if args.last:
         files = files[-args.last:]
     if not files:
-        sys.exit(f"no sweeps in {DATA_DIR}")
+        sys.exit(f"no scans in {DATA_DIR}")
     return files
 
 
-def sweep_time(path):
+def scan_time(path):
     # scan_20261031T200843.512Z_325to3800MHz.parquet -> the time part after "scan_"
     stamp = path.stem.split("_")[1]
     return datetime.strptime(stamp, "%Y%m%dT%H%M%S.%fZ").replace(tzinfo=timezone.utc)
@@ -53,24 +53,30 @@ def sweep_time(path):
 
 def read_settings(files):
     """Return (gain label, native bin spacing in Hz); warn if gains differ."""
-    gains = {}
+    gains = {}   # gain in dB -> list of files with that gain
     meta = {}
     for f in files:
         meta = {k.decode(): v.decode() for k, v in (pq.read_schema(f).metadata or {}).items()}
-        gains.setdefault(meta.get("gain_db", "?"), []).append(f)
-    if len(gains) > 1:
-        counts = ", ".join(f"{g} dB x{len(fs)}" for g, fs in gains.items())
-        print(f"WARNING: sweeps used different gains ({counts}); "
+        # Compare as numbers, not text: --gain 40 stores '40.0', the default stores '40'.
+        g = meta.get("gain_db")
+        gains.setdefault(None if g is None else float(g), []).append(f)
+
+    def label(g):
+        return "?" if g is None else f"{g:g}"     # :g prints 40.0 as 40, 40.5 as 40.5
+
+    if len(gains) > 1:  # some scans had different gain values
+        counts = ", ".join(f"{label(g)} dB x{len(fs)}" for g, fs in gains.items())
+        print(f"WARNING: scans used different gains ({counts}); "
               "their dBFS levels aren't directly comparable")
     bin_hz = float(meta.get("fs_hz", 20e6)) / float(meta.get("nperseg", 1024))
-    return "/".join(gains), bin_hz
+    return "/".join(label(g) for g in gains), bin_hz
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", help="Parquet files or patterns (default: data/)")
-    ap.add_argument("--last", type=int, help="use only the newest N sweeps")
+    ap.add_argument("--last", type=int, help="use only the newest N scans")
     ap.add_argument("--start", type=float, help="lowest frequency to show, Hz")
     ap.add_argument("--stop", type=float, help="highest frequency to show, Hz")
     ap.add_argument("--bins", type=int, default=1500,
@@ -83,7 +89,7 @@ def main():
 
     files = pick_files(args)
     gain, bin_hz = read_settings(files)
-    times = [sweep_time(f) for f in files]
+    times = [scan_time(f) for f in files]
 
     # DuckDB reads the files directly and does the heavy grouping, so only small
     # results come back to Python (like a SQL query instead of loading everything).
@@ -100,7 +106,7 @@ def main():
     con.execute(f"CREATE VIEW s AS SELECT * FROM all_bins "
                 f"WHERE freq_hz BETWEEN {fmin} AND {fmax}")
 
-    # --- waterfall: one row per sweep, peak-detect bins into --bins columns ---
+    # --- waterfall: one row per scan, peak-detect bins into --bins columns ---
     span = fmax - fmin + bin_hz
     pixel_hz = max(span / args.bins, bin_hz)       # never finer than the real bins
     n_cols = math.ceil(span / pixel_hz)
@@ -113,16 +119,19 @@ def main():
     W = np.full((len(files), n_cols), np.nan, dtype=np.float32)
     W[wf.filename.map(row_of).to_numpy(), wf.col.to_numpy()] = wf.p.to_numpy()
 
-    # --- full-resolution spectra across sweeps ---
-    # Average in linear power, then back to dB: mean of dB values reads ~2.5 dB low
-    # for noise (MATLAB: pow2db(mean(db2pow(x))), not mean(x)).
+    # --- full-resolution spectra across scans ---
+    # Averaging in linear power, then convert back to dB. Each bin is already a Welch
+    # average of ~127 segments, so for steady noise a linear power avg and a log power avg
+    # only differ by only ~0.02 dB. It matters for signals that come and go:
+    # a -90 dBFS/Hz burst in 1 of 10 scans over a -130 floor averages to about -100 in
+    # linear power, but averaging the dB values gives -126, close to the noise floor.
     sp = con.execute("""
         SELECT freq_hz,
                max(psd_dbfs_hz) AS max_hold,
                10 * log10(avg(pow(10, psd_dbfs_hz / 10))) AS avg_db
         FROM s GROUP BY freq_hz ORDER BY freq_hz""").df()
 
-    print(f"{len(files)} sweeps, {times[0]:%Y-%m-%d %H:%M:%S} to "
+    print(f"{len(files)} scans, {times[0]:%Y-%m-%d %H:%M:%S} to "
           f"{times[-1]:%Y-%m-%d %H:%M:%S} UTC, gain {gain} dB")
     print(f"{fmin/1e6:.1f}-{fmax/1e6:.1f} MHz; waterfall pixel = {pixel_hz/1e3:.1f} kHz "
           f"(peak of ~{pixel_hz/bin_hz:.0f} bins of {bin_hz/1e3:.1f} kHz)")
@@ -146,8 +155,8 @@ def main():
     fig.colorbar(mesh, ax=(ax_w, ax_s), shrink=0.6, label="peak PSD (dBFS/Hz)")
     rows = np.unique(np.linspace(0, len(files) - 1, min(len(files), 10)).round().astype(int))
     ax_w.set_yticks(rows + 0.5, [f"{times[i]:%m-%d %H:%M:%S}" for i in rows])
-    ax_w.set_ylabel("sweep start (UTC), newest at top")
-    ax_w.set_title(f"{len(files)} sweeps, {times[0]:%Y-%m-%d %H:%M:%S} to "
+    ax_w.set_ylabel("scan start (UTC), newest at top")
+    ax_w.set_title(f"{len(files)} scans, {times[0]:%Y-%m-%d %H:%M:%S} to "
                    f"{times[-1]:%Y-%m-%d %H:%M:%S} UTC  |  gain {gain} dB")
 
     ax_s.plot(sp.freq_hz / 1e6, sp.max_hold, lw=0.5, color="tab:red", label="max hold")
@@ -161,7 +170,7 @@ def main():
         line.set_linewidth(2)
 
     if args.png:
-        png = DATA_DIR / (f"sweeps_{times[0]:%Y%m%dT%H%M%SZ}_"
+        png = DATA_DIR / (f"scans_{times[0]:%Y%m%dT%H%M%SZ}_"
                           f"{times[-1]:%Y%m%dT%H%M%SZ}.png")
         fig.savefig(png, dpi=150)
         print("saved", png)

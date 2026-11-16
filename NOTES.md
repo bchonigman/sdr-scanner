@@ -1,17 +1,18 @@
 # sdr-sweeper: status notes
 
-## Current status (2026-11-11)
-Part A (single sweep), B1 (continuous logging) and B2 (`tools/plot_sweeps.py`) all work.
-In progress: renaming pass, one script at a time, names chosen by the user. Batch 1
-(`pluto_sweep.py` -> `pluto_rx_freq_scan.py`) is done and checked offline only; it still
-needs a hardware run. Batches 2-4 (`plot_sweeps.py`, `show_sweep.py`, `check_pluto.py`) are next.
+## Current status (2026-11-15)
+Part A (single scan), B1 (continuous logging) and B2 (`waterfall_plot_scans.py`) all work.
+In progress: renaming pass, one script at a time, names chosen by the user. Batches 1-2
+(`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`) are done and checked offline only;
+the scan script still needs a hardware run. Batches 3-4 (`show_sweep.py`, `check_pluto.py`)
+are next. All scripts are now at the top level (no more `tools/`).
 Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
   pyarrow, matplotlib, duckdb, jupyterlab, libiio 0.25, pylibiio 0.25, pyadi-iio 0.0.21.
   Pluto verified read-only over `usb:` and `ip:192.168.2.1` (AD9363A, fw v0.38).
-  Check anytime: `python tools/check_pluto.py`.
+  Check anytime: `python check_pluto.py`.
 - **2026-10-18:** git repo on `main`. `.gitignore` covers `data/`, `__pycache__/`,
   `.ipynb_checkpoints/` and `.claude/settings.local.json`. Global config:
   `user.name`/`user.email`, `init.defaultBranch=main`, `core.autocrlf=true`.
@@ -66,6 +67,15 @@ Then B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.
   they need. Found: `gain_db` is stored as `'40'` (default) or `'40.0'` (`--gain 40`), so
   plot_sweeps' text comparison of gains can warn falsely. This was already in the code;
   it's for the plot_sweeps batch.
+- **2026-11-15 (rename batch 2):** all `tools/` scripts moved to the top level (`git mv`;
+  `DATA_DIR` is now `parent / "data"`), so they sit next to the scan script and a notebook
+  in the repo root can import them. `tools/plot_sweeps.py` -> `waterfall_plot_scans.py`;
+  "sweep" -> "scan" in it (`sweep_time()` -> `scan_time()`, messages, labels). `--png`
+  now writes `data/scans_<first>_<last>.png` (old `sweeps_*.png` kept their names).
+  Fixed: gains are compared as numbers (`float(gain_db)`), so `'40'` and `'40.0'` no longer
+  warn. Corrected the "averaging dB reads ~2.5 dB low" claim: that holds for raw FFT bins,
+  but our bins are Welch averages of ~127 segments, so for steady noise it's ~0.02 dB. The
+  linear average matters for bursty signals (1-in-10 burst: -100 linear vs -126 in dB).
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
