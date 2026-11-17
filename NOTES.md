@@ -149,6 +149,14 @@ is in progress. Then D (measurement experiments), or the notebook's exercises.
   floor -130.90 to -130.77). Then `pluto-test` was removed. `pluto` itself is unchanged.
 - **2026-11-16 (C3):** the old venv `C:\Users\bchon\venvs\pluto` was already gone (the whole
   `venvs` folder no longer exists). The python.org Python 3.12 stays (`py -3.12`).
+- **2026-11-16 (commit email):** before the first push, all 18 commits were rewritten from
+  the personal Gmail to the GitHub noreply address (now also the global `user.email`), so
+  no personal email is published even if the repo is made public later. Done with
+  `git filter-branch --env-filter` (built in; `git filter-repo` is the modern tool but a
+  separate install), after a rehearsal on a scratch clone. Files, dates and messages are
+  identical; every hash changed, because a commit's hash covers its author/committer and
+  its parent's hash. Backup: `..\sdr-sweeper-before-email-rewrite.bundle`. No tracked file
+  quoted a hash. Lesson: change history only before it's pushed or shared.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`.
 
