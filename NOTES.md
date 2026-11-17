@@ -1,11 +1,12 @@
 # sdr-sweeper: status notes
 
 ## Current status (2026-11-16)
-Part A (single scan), B1 (continuous logging) and B2 (`waterfall_plot_scans.py`) all work.
-The renaming pass is finished (batches 1-4, names chosen by the user). The scripts are
-`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`, all
-at the top level. The renamed scan loop passed a hardware test on 2026-11-16 (see Done).
-Next: B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
+Part B is complete: single scan, B1 (continuous logging), B2 (`waterfall_plot_scans.py`)
+and B3 (`notebooks/scan_analysis.ipynb`, with `nbstripout` guarding git). The scripts are
+`pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`,
+all at the top level. Open question from B3: why did the band pattern change on 11-16?
+(see Done). Next options: C1 (`environment.yml`, which should now include nbstripout),
+D (measurement experiments), or the notebook's exercises.
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -100,8 +101,28 @@ Next: B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment
 
   So the AD9363 driver holds its settings until a power cycle or replug. A replug
   restores the TX defaults. The scanner forces TX safe at startup anyway.
+- **2026-11-16 (nbstripout):** `nbstripout` 0.9.1 installed in `pluto` from conda-forge
+  (one 24 KB noarch package, nothing else changed). `nbstripout --install --attributes
+  .gitattributes` registered it. The filter command in `.git/config` uses pluto's
+  python.exe by full path, so it works without activation. `required = true` makes
+  `git add` fail rather than commit outputs if the filter breaks. Tested: the stored blob
+  had `outputs: []` and `execution_count: null`.
+- **2026-11-16 (B3):** `notebooks/scan_analysis.ipynb`, written by a generator script and
+  executed end to end in the "Python (pluto)" kernel with nbconvert (the executed copy
+  went to scratch, so the committed file has no outputs). Sections: setup (finds
+  `data/` from `notebooks/` or the project root), a DuckDB view over `scan_*.parquet`,
+  an inventory (one row per scan, gain joined from `parquet_kv_metadata`), the noise
+  floor per scan, band occupancy (bins > per-scan median + 10 dB, bands registered as a
+  DataFrame, range join), reuse of `plot_scan.py` functions, and exercises.
+  Results on 49 scans (42 full, all at 40 dB):
+  - The noise floor is very stable: -130.77 to -130.90 dBFS/Hz, std 0.04 dB.
+  - **On 11-16 the pattern changes:** 700 MHz downlink jumps to ~80% occupancy, AWS rises,
+    LTE 600 drops, and the noise floor is ~0.08 dB lower. Possibly a different
+    location/antenna position, or carrier changes. The user hasn't explained it yet.
+  - ADS-B 1090 and C-band read 0%. ADS-B replies last ~120 us, so a ~3 ms capture rarely
+    catches one above the threshold.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
-  `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
+  `[Ss]cratch*.ipynb`.
 
 ## Gotchas
 - Always run from an **activated** env. Without activation, Windows loads the system
@@ -118,6 +139,9 @@ Next: B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment
 - PowerShell has no `cmd &` for background jobs. Use a second terminal,
   `Start-Process`, or `plot_scan.py --png --no-show`.
 - A plot window blocks the prompt until it's closed.
+- Printing a DuckDB result directly (`print(con.sql(...))`) in a Windows terminal can fail
+  with `UnicodeEncodeError` (cp1252 can't draw the box characters). Use `.df()`, or set
+  `PYTHONIOENCODING=utf-8`. Notebooks aren't affected.
 
 ## Commit routine
 1. `git status`: what changed?
@@ -135,8 +159,7 @@ The user wants to be walked through git steps (learning goal).
   Ctrl+C, one Parquet file per sweep.
 - **B2. `plot_sweeps.py`:** frequency-vs-time heatmap (waterfall) plus max-hold and
   average spectra across many sweeps.
-- **B3. Jupyter notebook** for analysis with DuckDB. Set up `nbstripout` **before** the
-  first notebook is committed.
+- **B3. Jupyter notebook** for analysis with DuckDB. Done: `notebooks/scan_analysis.ipynb`.
 
 ### C. Cleanup
 - **C1. `environment.yml`** so the `pluto` env can be rebuilt with one command.

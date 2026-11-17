@@ -121,8 +121,24 @@ To remove it: `jupyter kernelspec remove pluto`.
 ### Scratch notebooks
 
 Anything in `scratch/`, or named `scratch*.ipynb`, is ignored by git,
-so use those for trying things out. Before committing a real notebook, set up `nbstripout`
-to keep saved outputs out of git.
+so use those for trying things out.
+
+### Tracked notebooks and nbstripout
+
+Notebooks in `notebooks/` are tracked by git. `nbstripout` (installed in `pluto`) is a git
+filter: when you `git add` a notebook, git stores it **without outputs** (plots, tables,
+run counters). Your file on disk keeps its outputs. `git diff` also compares notebooks
+with outputs stripped, so you see only code and text changes. The filter is set up per
+clone: `.gitattributes` (tracked) says which files to filter, and `.git/config` (local)
+holds the command. On a new clone, run this once from an activated `pluto` prompt:
+```powershell
+nbstripout --install --attributes .gitattributes
+```
+`nbstripout --status` shows whether it's active.
+
+| Notebook | What it does |
+|---|---|
+| `notebooks/scan_analysis.ipynb` | DuckDB over all scans: inventory, noise floor per scan, band occupancy heatmap, reusing `plot_scan.py` |
 
 ## Spyder (MATLAB-style IDE)
 
