@@ -4,11 +4,8 @@
 Part A (single scan), B1 (continuous logging) and B2 (`waterfall_plot_scans.py`) all work.
 The renaming pass is finished (batches 1-4, names chosen by the user). The scripts are
 `pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`, all
-at the top level. Everything was checked offline only. Next: a short hardware run of the
-new scan loop (e.g. `--count 3 --start 2400e6 --stop 2500e6`), then `python check_pluto.py`
-to see whether the TX-safe settings (-89.75 dB, TX LO powerdown 1) persist after the
-script exits. Then B3 (analysis notebook, with `nbstripout` set up first) or C1
-(`environment.yml`).
+at the top level. The renamed scan loop passed a hardware test on 2026-11-16 (see Done).
+Next: B3 (analysis notebook, with `nbstripout` set up first) or C1 (`environment.yml`).
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -90,6 +87,19 @@ script exits. Then B3 (analysis notebook, with `nbstripout` set up first) or C1
   `-h` prints the usage examples instead of being tried as a URI. Parsing happens before
   `import adi`, so `-h` works even without the env activated. The user added comments
   explaining the late imports and the libiio DLL path line.
+- **2026-11-16 (hardware test after renames):**
+  `pluto_rx_freq_scan.py --count 3 --start 2400e6 --stop 2500e6` gave 3 scans of 0.3 s
+  each, one file per scan. Scan 1 to scan 2 took 1.7 s, because of the one-time ~1.2 s
+  setup cost of the first Parquet write. Scan 2 to scan 3 took 0.33 s.
+  **Settings persist in the radio, not the script.** `check_pluto.py` read the same
+  values before and after the run:
+  - **Before (power-up defaults):** 30.72 MS/s, slow_attack AGC at 71 dB, LO 2400 MHz,
+    **TX atten -10 dB, TX LO powerdown 0**.
+  - **After the script exited:** the script's settings were still there: 20 MS/s,
+    manual 40 dB, LO at the last step (2497.5), TX -89.75 dB, TX LO powered down.
+
+  So the AD9363 driver holds its settings until a power cycle or replug. A replug
+  restores the TX defaults. The scanner forces TX safe at startup anyway.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`. Tracked notebooks still need `nbstripout` set up first.
 
