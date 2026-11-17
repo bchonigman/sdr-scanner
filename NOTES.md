@@ -5,8 +5,9 @@ Part B is complete: single scan, B1 (continuous logging), B2 (`waterfall_plot_sc
 and B3 (`notebooks/scan_analysis.ipynb`, with `nbstripout` guarding git). The scripts are
 `pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`,
 all at the top level. Open question from B3: why did the band pattern change on 11-16?
-(see Done). Part C: C1 (`environment.yml`) and C3 are done. C2 (private GitHub remote)
-is in progress. Then D (measurement experiments), or the notebook's exercises.
+(see Done). Part C (cleanup) is complete: `environment.yml`, a private GitHub backup at
+`github.com/bchonigman/sdr-scanner`, and the rename to sdr-scanner. Next options: D
+(measurement experiments) or the notebook's exercises.
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -163,6 +164,13 @@ is in progress. Then D (measurement experiments), or the notebook's exercises.
   themselves). Claude Code's per-project memory is keyed by path, so
   `~\.claude\projects\C--Users-bchon-projects-sdr-sweeper\memory` was copied to the
   `...-sdr-scanner` folder. Older Claude sessions stay listed under the old path.
+- **2026-11-16 (C2):** private GitHub repo `bchonigman/sdr-scanner`, created in the web UI
+  (no README/license, so its history started empty), `origin` = the HTTPS URL. The first
+  `git push -u origin main` signed in through Git Credential Manager (ships with Git for
+  Windows; the token is kept in Windows Credential Manager) and set `origin/main` as the
+  upstream, so plain `git push`/`git pull` work. Verified with `git ls-remote`: GitHub's `main`
+  = local `main` (3183dc0). Checked before the push: 20 commits, all noreply, only code and
+  docs (no `data/`, nothing over 100 KB). `gh` CLI not needed.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`.
 
@@ -205,9 +213,7 @@ The user wants to be walked through git steps (learning goal).
 
 ### C. Cleanup
 - **C1. `environment.yml`.** Done 2026-11-16 (test-built).
-- **C2. Private GitHub remote** for backup (teaches push/pull). The `gh` CLI isn't
-  installed. Pre-push check done: nothing from `data/` in any commit; all commits carry
-  the user's personal email (GitHub's noreply address is an option).
+- **C2. Private GitHub remote.** Done 2026-11-16: `github.com/bchonigman/sdr-scanner`.
 - **C3. Done 2026-11-16:** the venv was already gone.
 
 ### D. Understand the measurement (DSP learning)

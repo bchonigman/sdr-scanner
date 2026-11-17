@@ -208,4 +208,12 @@ git diff                   # review it (q to quit the pager)
 git add <files>            # stage exactly what belongs in this commit
 git commit -m "Add ..."    # short, imperative summary
 git log --oneline          # history
+git push                   # back up new commits to GitHub (origin/main)
 ```
+
+The repo is backed up to a private GitHub repo (`origin`). `git status` says whether you're
+ahead of GitHub, meaning you have commits that aren't pushed yet. Working on another PC:
+`git clone https://github.com/bchonigman/sdr-scanner.git`, then the per-clone setup (the
+env, see [Rebuilding the `pluto` env](#rebuilding-the-pluto-env-new-pc-or-a-broken-env)),
+then `git pull` before starting work, to fetch what you pushed from elsewhere. `data/` is
+not on GitHub, so copy scans separately if you need them there.
