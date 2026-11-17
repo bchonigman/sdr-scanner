@@ -1,4 +1,4 @@
-# sdr-sweeper
+# sdr-scanner
 
 Current status and next steps live in [NOTES.md](NOTES.md). Read it at the start of each session.
 

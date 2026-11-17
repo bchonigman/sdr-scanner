@@ -1,4 +1,4 @@
-# sdr-sweeper
+# sdr-scanner
 
 Wideband spectrum scan logger for the ADALM-PLUTO SDR (AD9363, 325-3800 MHz).
 **Receive only:** the scripts never transmit.
@@ -12,7 +12,7 @@ You'll know it worked when the prompt starts with `(pluto)`.
 ### Anaconda PowerShell Prompt (Start menu)
 ```powershell
 conda activate pluto
-cd C:\Users\bchon\projects\sdr-sweeper
+cd C:\Users\bchon\projects\sdr-scanner
 ```
 
 ### Plain PowerShell (e.g. the Claude app's terminal, VS Code)
@@ -80,7 +80,7 @@ close it. To keep working meanwhile, open a second terminal, or use `--png --no-
 JupyterLab is installed in `pluto`, so activate the env first (see above), then start it
 from the project folder:
 ```powershell
-cd C:\Users\bchon\projects\sdr-sweeper
+cd C:\Users\bchon\projects\sdr-scanner
 jupyter lab
 ```
 It opens in your browser. The terminal stays busy running the Jupyter server, so open a

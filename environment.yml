@@ -1,4 +1,4 @@
-# Conda environment for sdr-sweeper (ADALM-PLUTO receive-only scanner).
+# Conda environment for sdr-scanner (ADALM-PLUTO receive-only scanner).
 #
 # Rebuild from scratch (Anaconda Prompt, in the project folder):
 #   conda env create -f environment.yml

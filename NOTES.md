@@ -1,4 +1,4 @@
-# sdr-sweeper: status notes
+# sdr-scanner: status notes
 
 ## Current status (2026-11-16)
 Part B is complete: single scan, B1 (continuous logging), B2 (`waterfall_plot_scans.py`)
@@ -157,6 +157,12 @@ is in progress. Then D (measurement experiments), or the notebook's exercises.
   identical; every hash changed, because a commit's hash covers its author/committer and
   its parent's hash. Backup: `..\sdr-sweeper-before-email-rewrite.bundle`. No tracked file
   quoted a hash. Lesson: change history only before it's pushed or shared.
+- **2026-11-16 (project rename):** `sdr-sweeper` -> `sdr-scanner`, to match the scan naming.
+  It's the GitHub repo name and the folder `C:\Users\bchon\projects\sdr-scanner`. Nothing in
+  the code or git setup depends on the folder name (scripts find `data/` relative to
+  themselves). Claude Code's per-project memory is keyed by path, so
+  `~\.claude\projects\C--Users-bchon-projects-sdr-sweeper\memory` was copied to the
+  `...-sdr-scanner` folder. Older Claude sessions stay listed under the old path.
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`.
 
