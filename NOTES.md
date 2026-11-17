@@ -5,8 +5,8 @@ Part B is complete: single scan, B1 (continuous logging), B2 (`waterfall_plot_sc
 and B3 (`notebooks/scan_analysis.ipynb`, with `nbstripout` guarding git). The scripts are
 `pluto_rx_freq_scan.py`, `waterfall_plot_scans.py`, `plot_scan.py` and `check_pluto.py`,
 all at the top level. Open question from B3: why did the band pattern change on 11-16?
-(see Done). Next options: C1 (`environment.yml`, which should now include nbstripout),
-D (measurement experiments), or the notebook's exercises.
+(see Done). Part C: C1 (`environment.yml`) and C3 are done. C2 (private GitHub remote)
+is in progress. Then D (measurement experiments), or the notebook's exercises.
 
 ## Done
 - **2026-10-17:** conda env `pluto` (conda-forge): Python 3.12, numpy, scipy, pandas,
@@ -121,6 +121,34 @@ D (measurement experiments), or the notebook's exercises.
     location/antenna position, or carrier changes. The user hasn't explained it yet.
   - ADS-B 1090 and C-band read 0%. ADS-B replies last ~120 us, so a ~3 ms capture rarely
     catches one above the threshold.
+- **2026-11-16 (nbstripout extra keys):** JupyterLab had added `deletable`, `editable`,
+  `slideshow` and an empty `tags` to one cell's metadata, which nbstripout keeps by default.
+  The user chose to strip the three UI keys but keep `tags` (papermill/Jupyter Book use
+  them): `git config filter.nbstripout.extrakeys "cell.metadata.deletable
+  cell.metadata.editable cell.metadata.slideshow"` (per clone, in README). nbstripout 0.9.1
+  reads this only from git config, not from a tracked file. The cell was cleaned on disk,
+  so the notebook matches HEAD again.
+- **2026-11-16 (C1):** `environment.yml`: conda-forge + `nodefaults`, the 14 packages chosen
+  on purpose, pinned only where needed: python 3.12, libiio/pylibiio 0.25 (pylibiio needs
+  libiio-c <1.0), pyadi-iio 0.0.21, spyder-kernels 3.1 (matches Spyder 6.1 in base),
+  ipykernel <7 (required by spyder-kernels 3.1). README "Rebuilding the `pluto` env" covers
+  `conda env create`/`update --prune` and the three things outside the env (Jupyter kernel,
+  nbstripout per clone, Spyder interpreter).
+  Learned while checking `pluto`:
+  - `conda env export --from-history` lists only what was asked for, but writes
+    `channels: defaults`, because `--override-channels -c conda-forge` isn't recorded.
+  - `conda list` labeled scipy and pyarrow as `pypi`, but both are conda packages
+    (`conda-meta\*.json` exists, `INSTALLER` says conda). Nothing in `pluto` came from pip.
+  - pyarrow was downgraded 25 -> 23 as a side effect when pyadi-iio was installed (shared
+    libprotobuf/abseil), so it isn't pinned.
+
+  Test build: `conda env create -f environment.yml -n pluto-test`, activated with
+  `activate.bat`. Every import worked and libiio reported v0.25. The fresh solve picked
+  newer versions than `pluto` has (**DuckDB 2.0.0** vs 1.5.6, pandas 3.1.1 vs 3.0.6, numpy
+  2.5.5), and `scan_analysis.ipynb` ran end to end on them with the same results (49 scans,
+  floor -130.90 to -130.77). Then `pluto-test` was removed. `pluto` itself is unchanged.
+- **2026-11-16 (C3):** the old venv `C:\Users\bchon\venvs\pluto` was already gone (the whole
+  `venvs` folder no longer exists). The python.org Python 3.12 stays (`py -3.12`).
 - `Scratch.ipynb` is the user's play-around notebook. `.gitignore` covers `scratch/` and
   `[Ss]cratch*.ipynb`.
 
@@ -162,11 +190,11 @@ The user wants to be walked through git steps (learning goal).
 - **B3. Jupyter notebook** for analysis with DuckDB. Done: `notebooks/scan_analysis.ipynb`.
 
 ### C. Cleanup
-- **C1. `environment.yml`** so the `pluto` env can be rebuilt with one command.
+- **C1. `environment.yml`.** Done 2026-11-16 (test-built).
 - **C2. Private GitHub remote** for backup (teaches push/pull). The `gh` CLI isn't
-  installed.
-- **C3. Optional:** delete the unused venv `C:\Users\bchon\venvs\pluto`. The standalone
-  Python 3.12 (python.org, per-user) is kept on purpose; use `py -3.12`.
+  installed. Pre-push check done: nothing from `data/` in any commit; all commits carry
+  the user's personal email (GitHub's noreply address is an option).
+- **C3. Done 2026-11-16:** the venv was already gone.
 
 ### D. Understand the measurement (DSP learning)
 - **D1. Spike comb above ~2.7 GHz:** evenly spaced small spikes, possibly one per

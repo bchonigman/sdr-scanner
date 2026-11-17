@@ -133,8 +133,12 @@ clone: `.gitattributes` (tracked) says which files to filter, and `.git/config` 
 holds the command. On a new clone, run this once from an activated `pluto` prompt:
 ```powershell
 nbstripout --install --attributes .gitattributes
+git config filter.nbstripout.extrakeys "cell.metadata.deletable cell.metadata.editable cell.metadata.slideshow"
 ```
-`nbstripout --status` shows whether it's active.
+`nbstripout --status` shows whether it's active. The second line also strips JupyterLab's
+per-cell UI state (`deletable`, `editable`, `slideshow`), which it adds when you click
+around and which would otherwise show up as changes. Cell `tags` are kept on purpose,
+because tools like papermill and Jupyter Book use them.
 
 | Notebook | What it does |
 |---|---|
@@ -156,6 +160,30 @@ A console that has connected to the Pluto keeps the connection open. Restart the
 before using SDR++ or a terminal script with the radio.
 
 If Spyder is ever updated, its `spyder-kernels` version in `pluto` must be updated to match.
+
+## Rebuilding the `pluto` env (new PC, or a broken env)
+
+[environment.yml](environment.yml) lists the packages this project needs. Everything comes
+from conda-forge, with pins only where they matter (the comments say why). From an
+Anaconda Prompt in the project folder:
+```powershell
+conda env create -f environment.yml                       # new env named pluto
+conda env update -n pluto -f environment.yml --prune      # or: bring an existing env in line
+```
+To start over completely: `conda env remove -n pluto`, then the `create` line.
+
+Three things live outside the env, so the file can't recreate them. Redo them after a
+rebuild:
+1. **Jupyter kernel "Python (pluto)"**: the `python -m ipykernel install ...` command in
+   [From the Start-menu Jupyter Notebook app](#from-the-start-menu-jupyter-notebook-app),
+   from an activated `pluto` prompt.
+2. **nbstripout git filter**: the commands in
+   [Tracked notebooks and nbstripout](#tracked-notebooks-and-nbstripout) (once per clone;
+   it's stored in `.git/config`, which git doesn't track).
+3. **Spyder**: point its interpreter at the env again (see [Spyder](#spyder-matlab-style-ide)).
+
+After installing a package on purpose, add it to `environment.yml` too, so the file stays
+the record of what the env should contain.
 
 ## Data
 

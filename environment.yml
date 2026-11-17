@@ -1,0 +1,41 @@
+# Conda environment for sdr-sweeper (ADALM-PLUTO receive-only scanner).
+#
+# Rebuild from scratch (Anaconda Prompt, in the project folder):
+#   conda env create -f environment.yml
+# Update an existing env after editing this file:
+#   conda env update -n pluto -f environment.yml --prune
+#
+# Only the packages we chose are listed; conda picks compatible versions of everything
+# else. Versions are pinned only where something breaks without the pin (see comments).
+# Not covered by this file (see README): the "Python (pluto)" Jupyter kernel registration,
+# and `nbstripout --install --attributes .gitattributes` in each clone.
+name: pluto
+channels:
+  - conda-forge
+  - nodefaults        # never mix in Anaconda's "defaults" channel
+dependencies:
+  - python=3.12
+
+  # Number crunching, data files, plots
+  - numpy
+  - scipy
+  - pandas
+  - pyarrow           # Parquet files in data/
+  - matplotlib
+  - duckdb            # SQL over data/scan_*.parquet
+
+  # Pluto access. libiio 1.0 has a different API: pylibiio 0.25 needs libiio <1.0, and
+  # libiio and pylibiio must match. pyadi-iio 0.0.21 is the version tested with them.
+  - libiio=0.25
+  - pylibiio=0.25
+  - pyadi-iio=0.0.21
+
+  # Notebooks and IDE
+  - jupyterlab
+  - nbstripout        # git filter that strips notebook outputs (see .gitattributes)
+  # Must match the Spyder in Anaconda base (Spyder 6.1 -> spyder-kernels 3.1.x).
+  # Update this pin when Spyder is updated.
+  - spyder-kernels=3.1
+  # spyder-kernels 3.1 requires ipykernel <7 (it downgraded 7.4 -> 6.31). Listed so the
+  # reason is visible here; conda would enforce it anyway.
+  - ipykernel<7
