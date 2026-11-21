@@ -11,11 +11,19 @@ ADCs my company develops, but the overall goal is better understanding of:
 - the PlutoSDR itself
 - SDR concepts, digital signal processing, and RF spectrum / communications
 - setting up Python programming environments for this kind of work
-- Jupyter notebooks (a standard industry skill)
+- Programming in in python using Jupyter notebooks / Spyder (a standard industry skill)
 - git version control and good habits around it
 
 Background: I mostly use MATLAB at work and am new to Python, conda and Jupyter.
 MATLAB analogies help.
+
+The starting focus is just learn how to set up a development environment 
+and be able to use the ADLAM-PLUTO as a simple spectrum analyzer to monitor 
+the surrounding rf environment and perhaps help debug interference issues 
+and identify sources of interference. 
+Once that is working I want to learn how to transmit and receive simple commuications 
+with the purpose of learning how to characterize/analyze receivers and link budgets, 
+as well as develop an understanding of standard DSP techniques.
 
 ## How to work with me
 
